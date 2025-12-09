@@ -33,8 +33,14 @@ from pydantic import (
     PositiveInt,
 )
 
+from superset.mcp_service.chart.schemas import (
+    ChartConfig,
+    GenerateChartResponse,
+    QueryCacheControl,
+)
 from superset.daos.base import ColumnOperator, ColumnOperatorEnum
 from superset.mcp_service.common.cache_schemas import MetadataCacheControl
+from superset.mcp_service.dashboard.schemas import DashboardInfo
 from superset.mcp_service.system.schemas import (
     PaginationInfo,
     TagInfo,
@@ -198,6 +204,82 @@ class DatasetList(BaseModel):
     total_pages: int
     has_previous: bool
     has_next: bool
+
+
+class DatasetChartSpec(BaseModel):
+    """Chart specification for dataset-driven chart creation."""
+
+    config: ChartConfig = Field(..., description="Chart configuration to generate")
+    preview_formats: List[
+        Literal["url", "interactive", "ascii", "vega_lite", "table", "base64"]
+    ] | None = Field(
+        None,
+        description="Optional preview formats for this chart (overrides global setting)",
+    )
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+
+class CreateDatasetVisualizationsRequest(QueryCacheControl):
+    """Request schema for creating charts and an optional dashboard from a dataset."""
+
+    dataset_id: int | str = Field(..., description="Dataset identifier (ID or UUID)")
+    charts: List[DatasetChartSpec] = Field(
+        ..., min_length=1, description="Charts to generate from the dataset"
+    )
+    save_charts: bool = Field(
+        default=True,
+        description="Whether to persist created charts in Superset",
+    )
+    generate_previews: bool = Field(
+        default=True,
+        description="Whether to generate previews for created charts",
+    )
+    preview_formats: List[
+        Literal["url", "interactive", "ascii", "vega_lite", "table", "base64"]
+    ] = Field(
+        default_factory=lambda: ["url"],
+        description="Preview formats to request when generating charts",
+    )
+    create_dashboard: bool = Field(
+        default=True,
+        description="Whether to assemble the created charts into a dashboard",
+    )
+    dashboard_title: str | None = Field(
+        None,
+        description="Optional title for the generated dashboard",
+        max_length=255,
+    )
+    dashboard_description: str | None = Field(
+        None,
+        description="Optional description for the generated dashboard",
+    )
+    publish_dashboard: bool = Field(
+        default=True,
+        description="Whether to publish the generated dashboard",
+    )
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+
+class CreateDatasetVisualizationsResponse(BaseModel):
+    """Response schema for dataset-driven chart and dashboard creation."""
+
+    charts: List[GenerateChartResponse] = Field(
+        default_factory=list, description="Chart creation responses"
+    )
+    dashboard: DashboardInfo | None = Field(
+        None, description="Created dashboard details when requested"
+    )
+    dashboard_url: str | None = Field(
+        None, description="URL to view the generated dashboard"
+    )
+    success: bool = Field(
+        default=False, description="Overall success status for the operation"
+    )
+    message: str | None = Field(None, description="Summary of the operation result")
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     columns_requested: List[str] | None = None
     columns_loaded: List[str] | None = None
     filters_applied: List[DatasetFilter] = Field(

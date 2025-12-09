@@ -15,11 +15,13 @@
 # specific language governing permissions and limitations
 # under the License.
 
+from .create_charts_and_dashboard import create_charts_and_dashboard_from_dataset
 from .get_dataset_available_filters import get_dataset_available_filters
 from .get_dataset_info import get_dataset_info
 from .list_datasets import list_datasets
 
 __all__ = [
+    "create_charts_and_dashboard_from_dataset",
     "list_datasets",
     "get_dataset_info",
     "get_dataset_available_filters",
